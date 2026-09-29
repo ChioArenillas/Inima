@@ -12,6 +12,7 @@ weather_data.db
 # Python cache
 __pycache__/
 *.py[cod]
+*$py.class
 
 # Node modules
 node_modules/
