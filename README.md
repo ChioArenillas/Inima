@@ -237,3 +237,15 @@ Automated verification tests are implemented in `tests/test_aggregator.py` using
 * **DST Offsets**: Verifies correct handling of CET (`+01:00`) during winter observations and CEST (`+02:00`) during summer periods.
 
 * **Selective Metrics**: Verifies payload reduction when specific metric parameters (`data_types`) are provided.
+
+
+## Live Frontend Demo & Local Architecture Note
+
+* **Live Frontend UI (Vercel):** [https://inima-dusky.vercel.app/]
+
+ **Important Note for Reviewers:**
+ The deployed Vercel link hosts the static React client application to showcase the UI components, KPI metrics, responsive layout, and data visualization. 
+ 
+ Because the meteorological backend integrates an **embedded SQLite persistence layer** and requires a secure upstream AEMET API key (which is intentionally not exposed on client-side environments), full end-to-end data fetching and cache-aside hydration are intended to run **locally**.
+ 
+ To test the complete workflow (API calls, SQLite caching, and dynamic timezone transformations), please follow the **Local Setup** guide below.
