@@ -11,6 +11,8 @@ export function App() {
   const [startDate, setStartDate] = useState("2024-01-01T00:00:00");
   const [endDate, setEndDate] = useState("2024-01-02T00:00:00");
   const [aggregation, setAggregation] = useState<AggregationOption>("Hourly");
+  const [dataTypes, setDataTypes] = useState<string[]>([]); 
+  const [locationTz, setLocationTz] = useState<string>("Europe/Madrid");
 
   const [data, setData] = useState<WeatherRecord[]>([]);
   const [loading, setLoading] = useState(false);
@@ -20,12 +22,13 @@ export function App() {
     setLoading(true);
     setError(null);
     try {
+      const activeMetrics = dataTypes.length === 0 ? ["temperature", "speed", "pressure"] : dataTypes;
       const result = await fetchWeatherData({
         startDate: overrideParams?.start ?? startDate,
         endDate: overrideParams?.end ?? endDate,
         station,
         aggregation: overrideParams?.agg ?? aggregation,
-        dataTypes: ["temperature", "speed", "pressure"],
+        dataTypes: activeMetrics,
       });
       setData(result);
     } catch (err: any) {
@@ -107,7 +110,7 @@ export function App() {
           <select
             value={station}
             onChange={(e) => setStation(e.target.value as StationOption)}
-            style={{ width: "100%", padding: "8px", marginTop: 4, borderRadius: 6, border: "1px solid #cbd5e1" }}
+            style={{ width: "100%", padding: "8px", marginTop: 4, borderRadius: 6, border: "1px solid #cbd5e1", boxSizing: "border-box" }}
           >
             <option value="Meteo Station Gabriel de Castilla">Gabriel de Castilla</option>
             <option value="Meteo Station Juan Carlos I">Juan Carlos I</option>
@@ -120,7 +123,7 @@ export function App() {
             type="text"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
-            style={{ width: "100%", padding: "8px", marginTop: 4, borderRadius: 6, border: "1px solid #cbd5e1" }}
+            style={{ width: "100%", padding: "8px", marginTop: 4, borderRadius: 6, border: "1px solid #cbd5e1", boxSizing: "border-box" }}
           />
         </div>
 
@@ -130,7 +133,7 @@ export function App() {
             type="text"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
-            style={{ width: "100%", padding: "8px", marginTop: 4, borderRadius: 6, border: "1px solid #cbd5e1" }}
+            style={{ width: "100%", padding: "8px", marginTop: 4, borderRadius: 6, border: "1px solid #cbd5e1", boxSizing: "border-box" }}
           />
         </div>
 
@@ -139,7 +142,7 @@ export function App() {
           <select
             value={aggregation}
             onChange={(e) => setAggregation(e.target.value as AggregationOption)}
-            style={{ width: "100%", padding: "8px", marginTop: 4, borderRadius: 6, border: "1px solid #cbd5e1" }}
+            style={{ width: "100%", padding: "8px", marginTop: 4, borderRadius: 6, border: "1px solid #cbd5e1", boxSizing: "border-box" }}
           >
             <option value="None">None (Raw 10m)</option>
             <option value="Hourly">Hourly Mean</option>
@@ -165,6 +168,82 @@ export function App() {
           >
             {loading ? "Querying Engine..." : "Query Observations"}
           </button>
+        </div>
+
+        {/* Fila Inferior Completa: Metrics y Location TZ */}
+        <div
+          style={{
+            gridColumn: "1 / -1",
+            borderTop: "1px solid #e2e8f0",
+            paddingTop: "0.9rem",
+            marginTop: "0.2rem",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: "1rem",
+          }}
+        >
+          {/* Selector de Métricas (0 to 3) */}
+          <div style={{ display: "flex", gap: "0.8rem", alignItems: "center", flexWrap: "wrap" }}>
+            <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#475569" }}>Required Metrics:</span>
+            {["temperature", "pressure", "speed"].map((type) => (
+              <label
+                key={type}
+                style={{
+                  fontSize: "0.82rem",
+                  color: "#334155",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "0.35rem",
+                  cursor: "pointer",
+                  background: "#ffffff",
+                  padding: "4px 8px",
+                  borderRadius: 4,
+                  border: "1px solid #cbd5e1",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={dataTypes.includes(type)}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setDataTypes([...dataTypes, type]);
+                    } else {
+                      setDataTypes(dataTypes.filter((t) => t !== type));
+                    }
+                  }}
+                />
+                {type.charAt(0).toUpperCase() + type.slice(1)}
+              </label>
+            ))}
+            <span style={{ fontSize: "0.75rem", color: "#64748b" }}>
+              ({dataTypes.length === 0 ? "Default: All metrics active" : `${dataTypes.length} selected`})
+            </span>
+          </div>
+
+          {/* Selector opcional de Location / TZ */}
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <label style={{ fontSize: "0.82rem", fontWeight: 600, color: "#475569" }}>
+              Location / TZ (optional):
+            </label>
+            <select
+              value={locationTz}
+              onChange={(e) => setLocationTz(e.target.value)}
+              style={{
+                padding: "4px 8px",
+                borderRadius: 4,
+                border: "1px solid #cbd5e1",
+                fontSize: "0.82rem",
+                background: "#ffffff",
+                color: "#334155",
+              }}
+            >
+              <option value="Europe/Madrid">Europe/Madrid (CET/CEST)</option>
+              <option value="Europe/Berlin">Europe/Berlin</option>
+              <option value="UTC">UTC (+00:00)</option>
+            </select>
+          </div>
         </div>
       </form>
 
