@@ -1,0 +1,18 @@
+# Environment variables (Credentials)
+.env
+
+# Virtual Environment
+venv/
+.venv/
+
+# SQLite Database
+*.db
+weather_data.db
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Node modules
+node_modules/
+dist/
