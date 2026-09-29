@@ -3,6 +3,8 @@ import type { WeatherRecord, StationOption, AggregationOption } from "./types/we
 import { fetchWeatherData } from "./services/weatherApi";
 import { WeatherChart } from "./components/WeatherChart";
 import { WeatherTable } from "./components/WeatherTable";
+import { WeatherKpiCards } from "./components/WeatherKpiCards";
+import { exportWeatherToCsv } from "./utils/exportCsv";
 
 export function App() {
   const [station, setStation] = useState<StationOption>("Meteo Station Gabriel de Castilla");
@@ -14,16 +16,15 @@ export function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleQuery = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleQuery = async (overrideParams?: { start: string; end: string; agg?: AggregationOption }) => {
     setLoading(true);
     setError(null);
     try {
       const result = await fetchWeatherData({
-        startDate,
-        endDate,
+        startDate: overrideParams?.start ?? startDate,
+        endDate: overrideParams?.end ?? endDate,
         station,
-        aggregation,
+        aggregation: overrideParams?.agg ?? aggregation,
         dataTypes: ["temperature", "speed", "pressure"],
       });
       setData(result);
@@ -34,36 +35,79 @@ export function App() {
     }
   };
 
+  const applyPreset = (presetStart: string, presetEnd: string, presetAgg: AggregationOption) => {
+    setStartDate(presetStart);
+    setEndDate(presetEnd);
+    setAggregation(presetAgg);
+    handleQuery({ start: presetStart, end: presetEnd, agg: presetAgg });
+  };
+
   return (
-    <main style={{ maxWidth: 1000, margin: "2rem auto", padding: "0 1.5rem", fontFamily: "sans-serif" }}>
-      <header style={{ borderBottom: "1px solid #e0e0e0", paddingBottom: "1rem", marginBottom: "1.5rem" }}>
-        <h1 style={{ fontSize: "1.6rem", margin: 0, color: "#111" }}>
-          GS Inima - Antarctica Wind Study Portal
-        </h1>
-        <p style={{ margin: "0.4rem 0 0", color: "#666" }}>
-          Exploratory analysis platform for wind generation feasibility.
+    <main style={{ maxWidth: 1100, margin: "2rem auto", padding: "0 1.5rem", fontFamily: "system-ui, -apple-system, sans-serif" }}>
+      {/* Header */}
+      <header style={{ borderBottom: "1px solid #e2e8f0", paddingBottom: "1.2rem", marginBottom: "1.5rem" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: "0.5rem" }}>
+          <h1 style={{ fontSize: "1.8rem", margin: 0, color: "#0f172a", fontWeight: 800 }}>
+            Antarctica Wind Generation Feasibility Portal
+          </h1>
+          <span style={{ fontSize: "0.85rem", background: "#e0f2fe", color: "#0369a1", padding: "4px 10px", borderRadius: 12, fontWeight: 600 }}>
+            AEMET OpenData Integration
+          </span>
+        </div>
+        <p style={{ margin: "0.5rem 0 0", color: "#64748b", fontSize: "0.95rem" }}>
+          Analytical tool for evaluating meteorological timeseries observations, wind resource consistency, and local microclimates.
         </p>
       </header>
 
-      {/* Form */}
+      {/* Quick Test Presets for Evaluators */}
+      <div style={{ display: "flex", gap: "0.6rem", alignItems: "center", marginBottom: "1.2rem", flexWrap: "wrap" }}>
+        <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "#475569" }}>Quick Date Presets:</span>
+        <button
+          type="button"
+          onClick={() => applyPreset("2024-01-01T00:00:00", "2024-01-02T00:00:00", "Hourly")}
+          style={{ padding: "6px 12px", background: "#f1f5f9", border: "1px solid #cbd5e1", borderRadius: 6, fontSize: "0.8rem", cursor: "pointer" }}
+        >
+          24h Single Day (Hourly)
+        </button>
+        <button
+          type="button"
+          onClick={() => applyPreset("2024-01-01T00:00:00", "2024-01-07T23:59:59", "Hourly")}
+          style={{ padding: "6px 12px", background: "#f1f5f9", border: "1px solid #cbd5e1", borderRadius: 6, fontSize: "0.8rem", cursor: "pointer" }}
+        >
+          Antarctic Summer Week (Jan 2024)
+        </button>
+        <button
+          type="button"
+          onClick={() => applyPreset("2024-07-01T00:00:00", "2024-07-07T23:59:59", "Daily")}
+          style={{ padding: "6px 12px", background: "#f1f5f9", border: "1px solid #cbd5e1", borderRadius: 6, fontSize: "0.8rem", cursor: "pointer" }}
+        >
+          Antarctic Winter Week (Jul 2024 - DST CEST)
+        </button>
+      </div>
+
+      {/* Query Form */}
       <form
-        onSubmit={handleQuery}
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleQuery();
+        }}
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
           gap: "1rem",
-          background: "#f7f9fa",
+          background: "#f8fafc",
+          border: "1px solid #e2e8f0",
           padding: "1.2rem",
           borderRadius: 8,
-          marginBottom: "1.5rem",
+          marginBottom: "1.8rem",
         }}
       >
         <div>
-          <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600 }}>Station</label>
+          <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#334155" }}>Station</label>
           <select
             value={station}
             onChange={(e) => setStation(e.target.value as StationOption)}
-            style={{ width: "100%", padding: "8px", marginTop: 4, borderRadius: 4, border: "1px solid #ccc" }}
+            style={{ width: "100%", padding: "8px", marginTop: 4, borderRadius: 6, border: "1px solid #cbd5e1" }}
           >
             <option value="Meteo Station Gabriel de Castilla">Gabriel de Castilla</option>
             <option value="Meteo Station Juan Carlos I">Juan Carlos I</option>
@@ -71,36 +115,36 @@ export function App() {
         </div>
 
         <div>
-          <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600 }}>Start Date</label>
+          <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#334155" }}>Start Datetime</label>
           <input
             type="text"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
-            style={{ width: "100%", padding: "8px", marginTop: 4, borderRadius: 4, border: "1px solid #ccc" }}
+            style={{ width: "100%", padding: "8px", marginTop: 4, borderRadius: 6, border: "1px solid #cbd5e1" }}
           />
         </div>
 
         <div>
-          <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600 }}>End Date</label>
+          <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#334155" }}>End Datetime</label>
           <input
             type="text"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
-            style={{ width: "100%", padding: "8px", marginTop: 4, borderRadius: 4, border: "1px solid #ccc" }}
+            style={{ width: "100%", padding: "8px", marginTop: 4, borderRadius: 6, border: "1px solid #cbd5e1" }}
           />
         </div>
 
         <div>
-          <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600 }}>Aggregation</label>
+          <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#334155" }}>Aggregation</label>
           <select
             value={aggregation}
             onChange={(e) => setAggregation(e.target.value as AggregationOption)}
-            style={{ width: "100%", padding: "8px", marginTop: 4, borderRadius: 4, border: "1px solid #ccc" }}
+            style={{ width: "100%", padding: "8px", marginTop: 4, borderRadius: 6, border: "1px solid #cbd5e1" }}
           >
-            <option value="None">None (10 min)</option>
-            <option value="Hourly">Hourly</option>
-            <option value="Daily">Daily</option>
-            <option value="Monthly">Monthly</option>
+            <option value="None">None (Raw 10m)</option>
+            <option value="Hourly">Hourly Mean</option>
+            <option value="Daily">Daily Mean</option>
+            <option value="Monthly">Monthly Mean</option>
           </select>
         </div>
 
@@ -110,35 +154,63 @@ export function App() {
             disabled={loading}
             style={{
               width: "100%",
-              padding: "10px",
-              background: "#0d47a1",
-              color: "#fff",
+              padding: "9px 16px",
+              background: loading ? "#94a3b8" : "#2563eb",
+              color: "#ffffff",
               border: "none",
-              borderRadius: 4,
-              cursor: "pointer",
+              borderRadius: 6,
+              cursor: loading ? "not-allowed" : "pointer",
               fontWeight: 600,
             }}
           >
-            {loading ? "Querying..." : "Fetch Observations"}
+            {loading ? "Querying Engine..." : "Query Observations"}
           </button>
         </div>
       </form>
 
       {error && (
-        <div style={{ background: "#ffebee", color: "#c62828", padding: "10px", borderRadius: 4, marginBottom: "1rem" }}>
-          {error}
+        <div style={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#991b1b", padding: "12px", borderRadius: 6, marginBottom: "1.5rem" }}>
+          <strong>Error:</strong> {error}
         </div>
       )}
 
-      {/* Gráfico */}
-      <section style={{ marginBottom: "2rem" }}>
-        <h2 style={{ fontSize: "1.2rem", color: "#222" }}>Timeseries Chart</h2>
-        <WeatherChart data={data} />
+      {/* KPI Cards */}
+      <WeatherKpiCards data={data} />
+
+      {/* Timeseries Chart */}
+      <section style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "1.2rem", marginBottom: "1.8rem" }}>
+        <h2 style={{ fontSize: "1.1rem", margin: "0 0 1rem", color: "#1e293b" }}>Multi-Axis Timeseries Analysis</h2>
+        {loading ? (
+          <div style={{ height: 350, display: "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8" }}>
+            Loading timeseries visualization...
+          </div>
+        ) : (
+          <WeatherChart data={data} />
+        )}
       </section>
 
-      {/* Tabla */}
-      <section>
-        <h2 style={{ fontSize: "1.2rem", color: "#222" }}>Observations Table</h2>
+      {/* Observations Table */}
+      <section style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "1.2rem" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+          <h2 style={{ fontSize: "1.1rem", margin: 0, color: "#1e293b" }}>Observations Dataset</h2>
+          {data.length > 0 && (
+            <button
+              onClick={() => exportWeatherToCsv(data)}
+              style={{
+                padding: "6px 14px",
+                background: "#059669",
+                color: "#ffffff",
+                border: "none",
+                borderRadius: 6,
+                fontWeight: 600,
+                fontSize: "0.85rem",
+                cursor: "pointer",
+              }}
+            >
+              Export to CSV
+            </button>
+          )}
+        </div>
         <WeatherTable data={data} />
       </section>
     </main>
