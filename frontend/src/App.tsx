@@ -67,21 +67,21 @@ export function App() {
           onClick={() => applyPreset("2024-01-01T00:00:00", "2024-01-02T00:00:00", "Hourly")}
           style={{ padding: "6px 12px", background: "#f1f5f9", border: "1px solid #cbd5e1", borderRadius: 6, fontSize: "0.8rem", cursor: "pointer" }}
         >
-          24h Single Day (Hourly)
+          24h Snapshot (Jan 1) (Hourly)
         </button>
         <button
           type="button"
           onClick={() => applyPreset("2024-01-01T00:00:00", "2024-01-07T23:59:59", "Hourly")}
           style={{ padding: "6px 12px", background: "#f1f5f9", border: "1px solid #cbd5e1", borderRadius: 6, fontSize: "0.8rem", cursor: "pointer" }}
         >
-          Antarctic Summer Week (Jan 2024)
+          Summer Campaign (Jan 2024 - CET)
         </button>
         <button
           type="button"
           onClick={() => applyPreset("2024-07-01T00:00:00", "2024-07-07T23:59:59", "Daily")}
           style={{ padding: "6px 12px", background: "#f1f5f9", border: "1px solid #cbd5e1", borderRadius: 6, fontSize: "0.8rem", cursor: "pointer" }}
         >
-          Antarctic Winter Week (Jul 2024 - DST CEST)
+          Winter Campaign (Jul 2024 - CEST)
         </button>
       </div>
 
