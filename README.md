@@ -9,12 +9,13 @@ This solution implements an asynchronous Python backend (FastAPI) paired with lo
 ```
                      ┌──────────────────────────────────────────────┐
                      │           Frontend (React + TS)              │
-                     │  - Quick Presets (Summer/Winter/DST)         │
+                     │  - Granular Metric Filter (Temp/Press/Speed) │
+                     │  - Dynamic Timezone/Location Selector        │
+                     │  - One-Click Presets (24h Snapshot / Weeks)  │
                      │  - KPI Summary Cards (Avg & Peak Gusts)      │
                      │  - Dual-Axis Timeseries (Recharts)           │
                      │  - Client-side CSV Export                    │
-                     └──────────────────────┬───────────────────────┘
-                                            │ HTTP / JSON
+                     └──────────────────────┬───────────────────────┘                                                     │ HTTP / JSON
                                             ▼
                      ┌──────────────────────────────────────────────┐
                      │            Backend (FastAPI)                 │
@@ -51,14 +52,21 @@ This solution implements an asynchronous Python backend (FastAPI) paired with lo
 
 ### 3. Frontend Architecture & Domain Usability
 
-* **Dual-Axis Dynamic Visualization**: Atmospheric pressure ranges from \~980 to \~1005 hPa, while wind speed and temperature typically range between -15 and +15. Plotting them on a single Cartesian axis flattens wind and temperature curves. A dual-axis layout (`left: Speed/Temp`, `right: Pressure`) with automatic domain scaling ensures both profiles remain clearly readable.
+* **Dual-Axis Dynamic Visualization**: Atmospheric pressure ranges from ~980 to ~1005 hPa, while wind speed and temperature typically range between -15 and +15. Plotting them on a single Cartesian axis flattens wind and temperature curves. A dual-axis layout (`left: Speed/Temp`, `right: Pressure`) with automatic domain scaling ensures both profiles remain clearly readable.
+
+* **Selective Metric Filtering**: Allows analysts to toggle specific parameters (`Temperature`, `Pressure`, `Speed`) dynamically. Defaults to all active metrics when unselected, reducing visual noise and optimizing network payload.
+
+* **Configurable Location / Timezone Selector**: Provides explicit timezone targeting (`Europe/Madrid`, `Europe/Berlin`, `UTC`) directly within the query interface, aligning visual analytics with operational regional desks.
 
 * **KPI Summary Cards**: Provides operational metrics directly in the client (Average Wind Speed, Peak Wind Gust, Mean Barometric Pressure, Minimum Temperature) to allow immediate evaluation of turbine cut-in and cut-out limits without manual data scanning.
 
 * **Client-Side CSV Export**: Avoids redundant backend roundtrips by serializing the active filtered dataset into a `Blob` and initiating an in-browser download.
 
-* **Evaluator Quick Presets**: Integrated one-click scenarios (24-Hour Scan, Antarctic Summer Week, Antarctic Winter DST Week) to allow evaluators to verify temporal edge cases instantly.
-
+* **Evaluator Quick Presets**: Integrated one-click scenario triggers for rapid assessment:
+  * **24h Snapshot (Jan 1)**: Inspects standard hourly granularity over a single diurnal cycle.
+  * **Summer Campaign (Jan 2024 - CET)**: Loads a full summer-week profile under Central European Time (UTC+1).
+  * **Winter Campaign (Jul 2024 - CEST)**: Evaluates high-severity winter wind regimes aggregated daily under Central European Summer Time (UTC+2).
+  
 ## Project Structure
 
 ```
@@ -241,11 +249,11 @@ Automated verification tests are implemented in `tests/test_aggregator.py` using
 
 ## Live Frontend Demo & Local Architecture Note
 
-* **Live Frontend UI (Vercel):** [https://inima-dusky.vercel.app/]
+* **Live Frontend UI (Vercel):** [https://inima-dusky.vercel.app/](https://inima-dusky.vercel.app/)
 
  **Important Note for Reviewers:**
  The deployed Vercel link hosts the static React client application to showcase the UI components, KPI metrics, responsive layout, and data visualization. 
  
  Because the meteorological backend integrates an **embedded SQLite persistence layer** and requires a secure upstream AEMET API key (which is intentionally not exposed on client-side environments), full end-to-end data fetching and cache-aside hydration are intended to run **locally**.
  
- To test the complete workflow (API calls, SQLite caching, and dynamic timezone transformations), please follow the **Local Setup** guide below.
+ To test the complete workflow (API calls, SQLite caching, and dynamic timezone transformations), please follow the **Getting Started** guide above.

@@ -32,14 +32,14 @@ export const WeatherChart: React.FC<Props> = ({ data }) => {
             }}
             stroke="#666"
           />
-          {/* Eje izquierdo: Temperatura (°C) y Velocidad (m/s) */}
+          {/* Left axis: Temperature (°C) and Speed (m/s) */}
           <YAxis
             yAxisId="left"
             stroke="#e65100"
             domain={["auto", "auto"]}
             unit=""
           />
-          {/* Eje derecho: Presión (hPa) con auto-escala para no aplastar el resto */}
+          {/* Right axis: Pressure (hPa) with auto-scaling to avoid flattening the rest */}
           <YAxis
             yAxisId="right"
             orientation="right"

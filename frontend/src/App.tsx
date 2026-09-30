@@ -170,7 +170,6 @@ export function App() {
           </button>
         </div>
 
-        {/* Fila Inferior Completa: Metrics y Location TZ */}
         <div
           style={{
             gridColumn: "1 / -1",
@@ -184,7 +183,7 @@ export function App() {
             gap: "1rem",
           }}
         >
-          {/* Selector de Métricas (0 to 3) */}
+          {/* Metric Selector (0 to 3) */}
           <div style={{ display: "flex", gap: "0.8rem", alignItems: "center", flexWrap: "wrap" }}>
             <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#475569" }}>Required Metrics:</span>
             {["temperature", "pressure", "speed"].map((type) => (
@@ -222,7 +221,7 @@ export function App() {
             </span>
           </div>
 
-          {/* Selector opcional de Location / TZ */}
+          {/* Location selector / TZ */}
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
             <label style={{ fontSize: "0.82rem", fontWeight: 600, color: "#475569" }}>
               Location / TZ (optional):
