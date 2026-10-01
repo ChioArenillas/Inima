@@ -3,7 +3,7 @@ import type { WeatherRecord } from "../types/weather";
 export function exportWeatherToCsv(data: WeatherRecord[], filename = "antarctica_observations.csv") {
   if (!data.length) return;
 
-  const headers = ["Station", "Datetime", "Temperature (°C)", "Pressure (hpa)", "Speed (m/s)"];
+  const headers = ["Station", "Datetime", "Temperature (ºC)", "Pressure (hpa)", "Speed (m/s)"];
   
   const csvRows = data.map((row) => [
     `"${row.Station || ""}"`,
