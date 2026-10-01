@@ -1,9 +1,10 @@
 import { useState } from "react";
 import type { WeatherRecord, StationOption, AggregationOption } from "./types/weather";
-import { fetchWeatherData } from "./services/weatherApi";
+import { fetchWeatherData, fetchFeasibilityMetrics, type FeasibilityMetrics } from "./services/weatherApi";
 import { WeatherChart } from "./components/WeatherChart";
 import { WeatherTable } from "./components/WeatherTable";
 import { WeatherKpiCards } from "./components/WeatherKpiCards";
+import { WindFeasibilityCards } from "./components/WindFeasibilityCards";
 import { exportWeatherToCsv } from "./utils/exportCsv";
 
 export function App() {
@@ -11,26 +12,44 @@ export function App() {
   const [startDate, setStartDate] = useState("2024-01-01T00:00:00");
   const [endDate, setEndDate] = useState("2024-01-02T00:00:00");
   const [aggregation, setAggregation] = useState<AggregationOption>("Hourly");
-  const [dataTypes, setDataTypes] = useState<string[]>([]); 
+  const [dataTypes, setDataTypes] = useState<string[]>([]);
   const [locationTz, setLocationTz] = useState<string>("Europe/Madrid");
 
   const [data, setData] = useState<WeatherRecord[]>([]);
+  const [feasibility, setFeasibility] = useState<FeasibilityMetrics | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleQuery = async (overrideParams?: { start: string; end: string; agg?: AggregationOption }) => {
     setLoading(true);
     setError(null);
+
+    const sDate = overrideParams?.start ?? startDate;
+    const eDate = overrideParams?.end ?? endDate;
+    const agg = overrideParams?.agg ?? aggregation;
+
     try {
       const activeMetrics = dataTypes.length === 0 ? ["temperature", "speed", "pressure"] : dataTypes;
-      const result = await fetchWeatherData({
-        startDate: overrideParams?.start ?? startDate,
-        endDate: overrideParams?.end ?? endDate,
-        station,
-        aggregation: overrideParams?.agg ?? aggregation,
-        dataTypes: activeMetrics,
-      });
+
+      // Concurrent request: time-series dataset + aerodynamic feasibility metrics
+      const [result, feasibilityResult] = await Promise.all([
+        fetchWeatherData({
+          startDate: sDate,
+          endDate: eDate,
+          station,
+          aggregation: agg,
+          dataTypes: activeMetrics,
+          location: locationTz,
+        }),
+        fetchFeasibilityMetrics({
+          startDate: sDate,
+          endDate: eDate,
+          station,
+        }),
+      ]);
+
       setData(result);
+      setFeasibility(feasibilityResult);
     } catch (err: any) {
       setError(err.message || "Failed to fetch weather observations.");
     } finally {
@@ -46,23 +65,23 @@ export function App() {
   };
 
   return (
-    <main style={{ maxWidth: 1100, margin: "2rem auto", padding: "0 1.5rem", fontFamily: "system-ui, -apple-system, sans-serif" }}>
-      {/* Header */}
+    <main style={{ maxWidth: 1150, margin: "2rem auto", padding: "0 1.5rem", fontFamily: "system-ui, -apple-system, sans-serif" }}>
+      {/* Header section */}
       <header style={{ borderBottom: "1px solid #e2e8f0", paddingBottom: "1.2rem", marginBottom: "1.5rem" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: "0.5rem" }}>
           <h1 style={{ fontSize: "1.8rem", margin: 0, color: "#0f172a", fontWeight: 800 }}>
             Antarctica Wind Generation Feasibility Portal
           </h1>
           <span style={{ fontSize: "0.85rem", background: "#e0f2fe", color: "#0369a1", padding: "4px 10px", borderRadius: 12, fontWeight: 600 }}>
-            AEMET OpenData Integration
+            AEMET OpenData Integration · GS Inima
           </span>
         </div>
         <p style={{ margin: "0.5rem 0 0", color: "#64748b", fontSize: "0.95rem" }}>
-          Analytical tool for evaluating meteorological timeseries observations, wind resource consistency, and local microclimates.
+          Analytical platform for evaluating meteorological timeseries observations, aerodynamic energy potential, and intraday market data consistency.
         </p>
       </header>
 
-      {/* Quick Test Presets for Evaluators */}
+      {/* Quick assessment presets */}
       <div style={{ display: "flex", gap: "0.6rem", alignItems: "center", marginBottom: "1.2rem", flexWrap: "wrap" }}>
         <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "#475569" }}>Quick Date Presets:</span>
         <button
@@ -88,7 +107,7 @@ export function App() {
         </button>
       </div>
 
-      {/* Query Form */}
+      {/* Query form */}
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -106,7 +125,7 @@ export function App() {
         }}
       >
         <div>
-          <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#334155" }}>Station</label>
+          <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#334155" }}>Meteo Station</label>
           <select
             value={station}
             onChange={(e) => setStation(e.target.value as StationOption)}
@@ -138,7 +157,7 @@ export function App() {
         </div>
 
         <div>
-          <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#334155" }}>Aggregation</label>
+          <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#334155" }}>Time Aggregation</label>
           <select
             value={aggregation}
             onChange={(e) => setAggregation(e.target.value as AggregationOption)}
@@ -166,10 +185,11 @@ export function App() {
               fontWeight: 600,
             }}
           >
-            {loading ? "Querying Engine..." : "Query Observations"}
+            {loading ? "Evaluating Engine..." : "Run Analysis"}
           </button>
         </div>
 
+        {/* Bottom row: Required metrics & location timezone */}
         <div
           style={{
             gridColumn: "1 / -1",
@@ -183,7 +203,7 @@ export function App() {
             gap: "1rem",
           }}
         >
-          {/* Metric Selector (0 to 3) */}
+          {/* Required metrics checkboxes (0 to 3 selectable) */}
           <div style={{ display: "flex", gap: "0.8rem", alignItems: "center", flexWrap: "wrap" }}>
             <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#475569" }}>Required Metrics:</span>
             {["temperature", "pressure", "speed"].map((type) => (
@@ -221,7 +241,7 @@ export function App() {
             </span>
           </div>
 
-          {/* Location selector / TZ */}
+          {/* Location / TZ selector */}
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
             <label style={{ fontSize: "0.82rem", fontWeight: 600, color: "#475569" }}>
               Location / TZ (optional):
@@ -248,16 +268,21 @@ export function App() {
 
       {error && (
         <div style={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#991b1b", padding: "12px", borderRadius: 6, marginBottom: "1.5rem" }}>
-          <strong>Error:</strong> {error}
+          <strong>System Notice:</strong> {error}
         </div>
       )}
 
-      {/* KPI Cards */}
+      {/* Wind Feasibility & Trading Indicators */}
+      <WindFeasibilityCards metrics={feasibility} loading={loading} />
+
+      {/* General Summary KPI Cards */}
       <WeatherKpiCards data={data} />
 
-      {/* Timeseries Chart */}
+      {/* Multi-Axis Timeseries Chart */}
       <section style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "1.2rem", marginBottom: "1.8rem" }}>
-        <h2 style={{ fontSize: "1.1rem", margin: "0 0 1rem", color: "#1e293b" }}>Multi-Axis Timeseries Analysis</h2>
+        <h2 style={{ fontSize: "1.1rem", margin: "0 0 1rem", color: "#1e293b", fontWeight: 700 }}>
+          Multi-Axis Timeseries Analysis
+        </h2>
         {loading ? (
           <div style={{ height: 350, display: "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8" }}>
             Loading timeseries visualization...
@@ -267,10 +292,12 @@ export function App() {
         )}
       </section>
 
-      {/* Observations Table */}
+      {/* Observations Dataset Table & CSV Export */}
       <section style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "1.2rem" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-          <h2 style={{ fontSize: "1.1rem", margin: 0, color: "#1e293b" }}>Observations Dataset</h2>
+          <h2 style={{ fontSize: "1.1rem", margin: 0, color: "#1e293b", fontWeight: 700 }}>
+            Observations Dataset
+          </h2>
           {data.length > 0 && (
             <button
               onClick={() => exportWeatherToCsv(data)}

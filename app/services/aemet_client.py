@@ -12,10 +12,29 @@ logger = logging.getLogger("wind_farm_api.aemet")
 AEMET_API_KEY = os.getenv("AEMET_API_KEY", "")
 BASE_AEMET_URL = "https://opendata.aemet.es/opendata/api/antartida/datos"
 
+# Diccionario exportado para compatibilidad con imports existentes
+STATION_CODES = {
+    "Meteo Station Gabriel de Castilla": "89064",
+    "Gabriel de Castilla": "89064",
+    "89064": "89064",
+    "Meteo Station Juan Carlos I": "89070",
+    "Juan Carlos I": "89070",
+    "89070": "89070",
+}
+
 STATION_NAMES = {
     "89064": "Meteo Station Gabriel de Castilla",
     "89070": "Meteo Station Juan Carlos I",
 }
+
+
+def _parse_float(val: Any) -> Any:
+    if val is None:
+        return None
+    try:
+        return float(str(val).replace(",", "."))
+    except (ValueError, TypeError):
+        return None
 
 
 def fetch_and_store_aemet_data(
@@ -27,7 +46,7 @@ def fetch_and_store_aemet_data(
     """
     Synchronizes observations from AEMET OpenData API into SQLite.
     Follows AEMET's two-step download pattern:
-    1. Request data URL with API Key.
+    1. Request download link with API Key.
     2. Download raw meteorological JSON payload.
     """
     if not AEMET_API_KEY:
@@ -42,7 +61,7 @@ def fetch_and_store_aemet_data(
 
     logger.info(f"Contacting AEMET endpoint: {url}")
     res = requests.get(url, headers=headers, timeout=20)
-    
+
     if res.status_code != 200:
         logger.error(f"AEMET initial request failed with status {res.status_code}: {res.text}")
         raise ValueError(f"AEMET API error: HTTP {res.status_code}")
@@ -57,7 +76,7 @@ def fetch_and_store_aemet_data(
     data_url = meta["datos"]
     logger.info(f"Downloading observational payload from secured URL: {data_url}")
     data_res = requests.get(data_url, timeout=30)
-    
+
     if data_res.status_code != 200:
         raise ValueError("Failed downloading observational payload from AEMET storage bucket.")
 
@@ -66,7 +85,6 @@ def fetch_and_store_aemet_data(
     default_name = STATION_NAMES.get(station_code, f"Meteo Station {station_code}")
 
     for item in raw_items:
-        # Expected AEMET fields: fhora, temp, pres, vel
         time_str = item.get("fhora") or item.get("fint")
         if not time_str:
             continue
@@ -80,7 +98,6 @@ def fetch_and_store_aemet_data(
         except Exception:
             continue
 
-        # Extract numeric measurements
         temp = _parse_float(item.get("temp"))
         pres = _parse_float(item.get("pres"))
         vel = _parse_float(item.get("vel"))
@@ -99,10 +116,17 @@ def fetch_and_store_aemet_data(
     return saved
 
 
-def _parse_float(val: Any) -> Any:
-    if val is None:
-        return None
-    try:
-        return float(str(val).replace(",", "."))
-    except (ValueError, TypeError):
-        return None
+class AEMETClient:
+    """Wrapper class providing backward compatibility for existing imports."""
+
+    def __init__(self, api_key: str = None):
+        self.api_key = api_key or AEMET_API_KEY
+
+    def fetch_data(self, station_code: str, start_str: str, end_str: str, db: Session = None):
+        if db is not None:
+            return fetch_and_store_aemet_data(db, station_code, start_str, end_str)
+        return 0
+
+    @staticmethod
+    def fetch_and_store(db: Session, station_code: str, start_str: str, end_str: str):
+        return fetch_and_store_aemet_data(db, station_code, start_str, end_str)
