@@ -1,67 +1,108 @@
-import httpx
+import os
 import logging
-from typing import List, Dict, Any
-from app.config import settings
+from datetime import datetime, timezone
+from typing import Dict, Any, List
+import requests
+from sqlalchemy.orm import Session
 
-logger = logging.getLogger(__name__)
+from app.crud import save_observations
 
-STATION_CODES = {
-    "Meteo Station Juan Carlos I": "89060",
-    "Meteo Station Gabriel de Castilla": "89064",
-    "89060": "89060",
-    "89064": "89064"
+logger = logging.getLogger("wind_farm_api.aemet")
+
+AEMET_API_KEY = os.getenv("AEMET_API_KEY", "")
+BASE_AEMET_URL = "https://opendata.aemet.es/opendata/api/antartida/datos"
+
+STATION_NAMES = {
+    "89064": "Meteo Station Gabriel de Castilla",
+    "89070": "Meteo Station Juan Carlos I",
 }
 
-AEMET_BASE_URL = "https://opendata.aemet.es/opendata/api"
+
+def fetch_and_store_aemet_data(
+    db: Session,
+    station_code: str,
+    start_str: str,
+    end_str: str
+) -> int:
+    """
+    Synchronizes observations from AEMET OpenData API into SQLite.
+    Follows AEMET's two-step download pattern:
+    1. Request data URL with API Key.
+    2. Download raw meteorological JSON payload.
+    """
+    if not AEMET_API_KEY:
+        logger.warning("AEMET_API_KEY environment variable is not set. Operating in offline/mock mode.")
+        return 0
+
+    url = f"{BASE_AEMET_URL}/fechaini/{start_str}/fechafin/{end_str}/estacion/{station_code}"
+    headers = {
+        "cache-control": "no-cache",
+        "api_key": AEMET_API_KEY
+    }
+
+    logger.info(f"Contacting AEMET endpoint: {url}")
+    res = requests.get(url, headers=headers, timeout=20)
+    
+    if res.status_code != 200:
+        logger.error(f"AEMET initial request failed with status {res.status_code}: {res.text}")
+        raise ValueError(f"AEMET API error: HTTP {res.status_code}")
+
+    meta = res.json()
+    if meta.get("estado") != 200 or "datos" not in meta:
+        msg = meta.get("descripcion", "No data returned from AEMET for this interval")
+        logger.warning(f"AEMET response message: {msg}")
+        return 0
+
+    # Step 2: Fetch actual observation data
+    data_url = meta["datos"]
+    logger.info(f"Downloading observational payload from secured URL: {data_url}")
+    data_res = requests.get(data_url, timeout=30)
+    
+    if data_res.status_code != 200:
+        raise ValueError("Failed downloading observational payload from AEMET storage bucket.")
+
+    raw_items = data_res.json()
+    parsed_records = []
+    default_name = STATION_NAMES.get(station_code, f"Meteo Station {station_code}")
+
+    for item in raw_items:
+        # Expected AEMET fields: fhora, temp, pres, vel
+        time_str = item.get("fhora") or item.get("fint")
+        if not time_str:
+            continue
+
+        try:
+            dt = datetime.fromisoformat(time_str)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            else:
+                dt = dt.astimezone(timezone.utc)
+        except Exception:
+            continue
+
+        # Extract numeric measurements
+        temp = _parse_float(item.get("temp"))
+        pres = _parse_float(item.get("pres"))
+        vel = _parse_float(item.get("vel"))
+
+        parsed_records.append({
+            "station_id": station_code,
+            "station_name": item.get("nombre") or default_name,
+            "timestamp_utc": dt,
+            "temperature": temp,
+            "pressure": pres,
+            "wind_speed": vel,
+        })
+
+    saved = save_observations(db, parsed_records)
+    logger.info(f"Successfully synchronized and stored {saved} new observations in SQLite cache.")
+    return saved
 
 
-class AEMETClient:
-    def __init__(self, api_key: str = settings.AEMET_API_KEY):
-        self.api_key = api_key.strip()
-        self.headers = {
-            "api_key": self.api_key,
-            "cache-control": "no-cache"
-        }
-
-    async def fetch_antarctica_data(
-        self, start_date_str: str, end_date_str: str, station_id: str
-    ) -> List[Dict[str, Any]]:
-        # AEMET requires datetime strings to terminate explicitly with 'UTC'
-        formatted_start = start_date_str if start_date_str.endswith("UTC") else f"{start_date_str}UTC"
-        formatted_end = end_date_str if end_date_str.endswith("UTC") else f"{end_date_str}UTC"
-
-        endpoint = (
-            f"{AEMET_BASE_URL}/antartida/datos/fechaini/{formatted_start}"
-            f"/fechafin/{formatted_end}/estacion/{station_id}"
-        )
-        params = {"api_key": self.api_key}
-
-        async with httpx.AsyncClient(timeout=25.0) as client:
-            logger.info(f"Step 1: Requesting download URL from AEMET: {endpoint}")
-            response = await client.get(endpoint, headers=self.headers, params=params)
-
-            if response.status_code != 200:
-                logger.error(
-                    f"AEMET Step 1 failed: HTTP {response.status_code} - {response.text}"
-                )
-                return []
-
-            meta_data = response.json()
-            data_url = meta_data.get("datos")
-
-            if not data_url:
-                logger.warning(
-                    f"AEMET did not provide a data URL: {meta_data.get('descripcion')}"
-                )
-                return []
-
-            logger.info(f"Step 2: Fetching raw measurements from: {data_url}")
-            data_response = await client.get(data_url)
-
-            if data_response.status_code != 200:
-                logger.error(
-                    f"AEMET Step 2 failed: HTTP {data_response.status_code}"
-                )
-                return []
-
-            return data_response.json()
+def _parse_float(val: Any) -> Any:
+    if val is None:
+        return None
+    try:
+        return float(str(val).replace(",", "."))
+    except (ValueError, TypeError):
+        return None
