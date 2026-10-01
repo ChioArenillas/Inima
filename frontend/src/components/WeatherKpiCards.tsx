@@ -14,7 +14,7 @@ export const WeatherKpiCards: React.FC<Props> = ({ data }) => {
       .filter((v): v is number => v !== undefined && v !== null);
 
     const temps = data
-      .map((d) => d["Temperature (°C)"])
+      .map((d) => d["Temperature (ºC)"])
       .filter((v): v is number => v !== undefined && v !== null);
 
     const pressures = data

@@ -27,7 +27,7 @@ export const WeatherTable: React.FC<Props> = ({ data }) => {
             <tr key={idx} style={{ borderBottom: "1px solid #eee" }}>
               <td style={{ padding: "8px 10px" }}>{row.Station}</td>
               <td style={{ padding: "8px 10px" }}>{row.Datetime}</td>
-              <td style={{ padding: "8px 10px" }}>{row["Temperature (°C)"] ?? "-"}</td>
+              <td style={{ padding: "8px 10px" }}>{row["Temperature (ºC)"] ?? "-"}</td>
               <td style={{ padding: "8px 10px" }}>{row["Pressure (hpa)"] ?? "-"}</td>
               <td style={{ padding: "8px 10px" }}>{row["Speed (m/s)"] ?? "-"}</td>
             </tr>

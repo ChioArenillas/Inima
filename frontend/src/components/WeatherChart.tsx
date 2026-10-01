@@ -21,7 +21,10 @@ export const WeatherChart: React.FC<Props> = ({ data }) => {
   return (
     <div style={{ width: "100%", height: 380, marginTop: "1rem" }}>
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 10, right: 30, left: 10, bottom: 20 }}>
+        <LineChart
+          data={data}
+          margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
+        >
           <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
           <XAxis
             dataKey="Datetime"
@@ -52,11 +55,11 @@ export const WeatherChart: React.FC<Props> = ({ data }) => {
           <Line
             yAxisId="left"
             type="monotone"
-            dataKey="Temperature (°C)"
+            dataKey="Temperature (ºC)"
             stroke="#e65100"
             dot={false}
             strokeWidth={2}
-          />
+          />{" "}
           <Line
             yAxisId="left"
             type="monotone"

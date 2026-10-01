@@ -1,7 +1,7 @@
 export interface WeatherRecord {
   Station: string;
   Datetime: string;
-  "Temperature (°C)"?: number;
+  "Temperature (ºC)"?: number;
   "Pressure (hpa)"?: number;
   "Speed (m/s)"?: number;
 }
