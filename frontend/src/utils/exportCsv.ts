@@ -8,7 +8,7 @@ export function exportWeatherToCsv(data: WeatherRecord[], filename = "antarctica
   const csvRows = data.map((row) => [
     `"${row.Station || ""}"`,
     `"${row.Datetime || ""}"`,
-    row["Temperature (°C)"] ?? "",
+    row["Temperature (ºC)"] ?? "",
     row["Pressure (hpa)"] ?? "",
     row["Speed (m/s)"] ?? ""
   ]);
