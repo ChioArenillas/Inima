@@ -12,7 +12,6 @@ logger = logging.getLogger("wind_farm_api.aemet")
 AEMET_API_KEY = os.getenv("AEMET_API_KEY", "")
 BASE_AEMET_URL = "https://opendata.aemet.es/opendata/api/antartida/datos"
 
-# Diccionario exportado para compatibilidad con imports existentes
 STATION_CODES = {
     "Meteo Station Gabriel de Castilla": "89064",
     "Gabriel de Castilla": "89064",
@@ -37,6 +36,14 @@ def _parse_float(val: Any) -> Any:
         return None
 
 
+def _format_aemet_date(date_str: str) -> str:
+    """Ipagura ti AEMET a ti petsa ket addaan iti 'UTC' iti maudi a paset."""
+    cleaned = date_str.strip()
+    if not cleaned.endswith("UTC"):
+        cleaned = f"{cleaned}UTC"
+    return cleaned
+
+
 def fetch_and_store_aemet_data(
     db: Session,
     station_code: str,
@@ -53,7 +60,11 @@ def fetch_and_store_aemet_data(
         logger.warning("AEMET_API_KEY environment variable is not set. Operating in offline/mock mode.")
         return 0
 
-    url = f"{BASE_AEMET_URL}/fechaini/{start_str}/fechafin/{end_str}/estacion/{station_code}"
+    # Pormaten dagiti petsa tapno adda 'UTC' iti maudi a paset
+    formatted_start = _format_aemet_date(start_str)
+    formatted_end = _format_aemet_date(end_str)
+
+    url = f"{BASE_AEMET_URL}/fechaini/{formatted_start}/fechafin/{formatted_end}/estacion/{station_code}"
     headers = {
         "cache-control": "no-cache",
         "api_key": AEMET_API_KEY
@@ -90,7 +101,9 @@ def fetch_and_store_aemet_data(
             continue
 
         try:
-            dt = datetime.fromisoformat(time_str)
+            # Ikkaten ti 'UTC' no adda iti maudi sakbay ti panang-parse
+            clean_time = time_str.replace("UTC", "")
+            dt = datetime.fromisoformat(clean_time)
             if dt.tzinfo is None:
                 dt = dt.replace(tzinfo=timezone.utc)
             else:
