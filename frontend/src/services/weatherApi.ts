@@ -1,6 +1,6 @@
 import type { WeatherRecord, StationOption, AggregationOption } from "../types/weather";
 
-const BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000" || "https://aemet-wind-farm-api.onrender.com";;
+const BASE_URL = import.meta.env.VITE_API_URL || "https://aemet-wind-farm-api.onrender.com";
 
 const STATION_CODE_MAP: Record<StationOption, string> = {
   "Meteo Station Gabriel de Castilla": "89064",
