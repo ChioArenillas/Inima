@@ -10,10 +10,10 @@ class WeatherObservation(Base):
     __tablename__ = "weather_observations"
 
     # Unique identifier composed of station_id and UTC timestamp
-    id = Column(String, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
     station_id = Column(String, index=True, nullable=False)
-    station_name = Column(String, nullable=False)
-    timestamp_utc = Column(DateTime(timezone=True), index=True, nullable=False)
+    station_name = Column(String, nullable=True)
+    timestamp_utc = Column(DateTime, index=True, nullable=False)
 
     # Core meteorological metrics requested
     temperature = Column(Float, nullable=True)  # 'temp' from AEMET response
