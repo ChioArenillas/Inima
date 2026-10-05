@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from typing import List, Tuple, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
 from app.models import WeatherObservation
 
@@ -59,40 +60,41 @@ def get_cached_observations(
         for r in records
     ]
 
-    # If records exist, treat as cache hit to protect upstream quota
     return result, True
 
 
 def save_observations(db: Session, records: List[Dict[str, Any]]) -> int:
     """
-    Inserts observations ignoring duplicates based on (station_id, timestamp_utc).
+    Inserts observations ignoring duplicates natively via SQLite ON CONFLICT DO NOTHING.
+    Guarantees idempotency and avoids unique constraint violations.
     """
     if not records:
         return 0
 
-    inserted_count = 0
+    # 1. Deduplicar en memoria por si el payload de AEMET trae elementos repetidos
+    unique_records_dict = {}
     for item in records:
-        exists = (
-            db.query(WeatherObservation.id)
-            .filter(
-                and_(
-                    WeatherObservation.station_id == item["station_id"],
-                    WeatherObservation.timestamp_utc == item["timestamp_utc"]
-                )
-            )
-            .first()
-        )
-        if not exists:
-            obs = WeatherObservation(
-                station_id=item["station_id"],
-                station_name=item["station_name"],
-                timestamp_utc=item["timestamp_utc"],
-                temperature=item.get("temperature"),
-                pressure=item.get("pressure"),
-                wind_speed=item.get("wind_speed"),
-            )
-            db.add(obs)
-            inserted_count += 1
+        key = (item["station_id"], item["timestamp_utc"])
+        if key not in unique_records_dict:
+            unique_records_dict[key] = {
+                "station_id": item["station_id"],
+                "station_name": item.get("station_name"),
+                "timestamp_utc": item["timestamp_utc"],
+                "temperature": item.get("temperature"),
+                "pressure": item.get("pressure"),
+                "wind_speed": item.get("wind_speed"),
+            }
 
+    unique_records = list(unique_records_dict.values())
+    if not unique_records:
+        return 0
+
+    # 2. Insert nativo atómico con ON CONFLICT DO NOTHING en SQLite
+    stmt = sqlite_insert(WeatherObservation).values(unique_records)
+    stmt = stmt.on_conflict_do_nothing(
+        index_elements=["station_id", "timestamp_utc"]
+    )
+
+    result = db.execute(stmt)
     db.commit()
-    return inserted_count
+    return result.rowcount
